@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html>
+    <head>  
+       <style>
+           table.center {
+            margin-left: auto; 
+            margin-right: auto;
+        }
+        </style>
+        <script src="jspsych-6.3.0/jspsych.js"></script>
+        <script src="jspsych-6.3.0/plugins/jspsych-html-keyboard-response.js"></script>
+        <script src="jspsych-6.3.0/plugins/jspsych-html-button-response.js"></script>
+        <script src="jspsych-6.3.0/plugins/jspsych-survey-multi-choice.js"></script>
+        <script src="jspsych-6.3.0/plugins/jspsych-external-html.js"></script>
+        <script src="jspsych-6.3.0/plugins/jspsych-instructions.js"></script>
+        <script src="lists_and_functions/stimulusLists.js"></script>
+        <script src="lists_and_functions/functions.js"></script>
+        <script src="lists_and_functions/countingLoops.js"></script>
+        <link href="jspsych-6.3.0/css/jspsych.css" rel="stylesheet" type="text/css">
+    </head>
+    <body></body>
+
+    <script>
+        /*/ SUBJECT INFORMATION /*/
+        var participant_id = getQueryVariable("studentId") //SONA id from URL
+        var id = jsPsych.randomization.randomID(8); //random 8 char string
+        var subject_id = participant_id+"_"+ id; //SONA ID plus random 8 char string
+        jsPsych.data.addProperties({subject: subject_id,}); //add subject_id to every trial
+       
+        // SONA information: for granting credit
+        experimentID = 5094
+        tokenID = "f362fc57c3894cc885a6216da93a5520"
+
+        var credit_url = "https://uwaterloo.sona-systems.com/webstudy_credit.aspx?experiment_id=" + experimentID + "&credit_token=" + tokenID + "&survey_code="+participant_id
+        
+        
+        //Initializing variables
+        var numBlocks = 8; // set to 8 for actual experiment.
+
+        // The welcome screen is a landing page for the experiment.
+        var welcome_screen = {
+            type: 'html-keyboard-response', 
+            stimulus: '<p> Welcome to our study! </p><br><p>Please be sure to locate yourself in a quiet area.</p> <p>Your full attention is required for the next 30 minutes.</p> <br> <p>Press SPACE bar to begin the task.</p>', 
+            choices: [' ']
+        };
+        
+        // Check if consent was given, use a function to read the status of button on the consent form. If the user has checked it, then continue to next stage, otherwise give the user an alert to check the box. 
+        var check_consent = function(elem){ 
+            if (document.getElementById('consent_checkbox').checked){
+                return true;
+            }
+            else{
+                alert("If you wish to participate, you must check the box next to the statement 'I agree to take part in this study.'");
+                return false;
+            }
+            return false;
+        };
+
+        // The informed consent object with check of consent function given above
+        var information_consent = {
+            type: 'external-html',
+            url: "../ICOWAE_SONA/letters/ICL_colours_and_words.html",
+            cont_btn: "start",
+            check_fn: check_consent
+        };
+
+        //starts at 0 to provide the practice instructions, changes to "1" after learn_instructions_prac runs once
+        var instruct_set = 0;
+        var learn_instructions_prac ={
+            type: 'html-keyboard-response',
+            stimulus: function(){
+                if (instruct_set == 0){
+                    return '<p> In this first of two tasks, you will be shown a series of coloured words, one at a time.</p><br><p>Your goal is to identify the <b>colour</b> of each word <br> as <b>quickly</b> as you can while still answering <b>correctly</b>. </p><br><p>Press "P" for further instructions.</p>';
+                }
+                else{
+                    return '<p>Using your <span style="color:#B57EDC;"><b>right</b></span> hand,</p><ul style="list-style-type:none;"><li>If the word appears in <span style="color:red;">red</span>, with your <span style="color:#B57EDC;"><b>index</b></span> finger, press: <span style="color:red;"><b>J</b></span></li><li>If the word appears in <span style="color:yellow;">yellow</span>, with your <span style="color:#B57EDC;"><b>middle</b></span> finger, press: <span style="color:yellow;"><b>K</b></li><li>If the word appears in <span style="color:green;">green</span>, with your <span style="color:#B57EDC;"><b>ring</b></span> finger, press: <span style="color:green;"><b>L</b></li></ul><br><p>You will need to remember the colour-key assignments.<br> A legend will only be displayed for the practice trials.</p><br><p>Please do your best to respond quickly and correctly to each item.</p><p>Press "P" to practice.</p>';
+                }
+            }, 
+            choices: ['P'],
+            on_finish: function(){
+                instruct_set = 1;
+            }
+        }
+
+        //instructions that precursor the actual learn trials
+        var learn_instructions ={
+            type: 'instructions',
+            pages:['<p>Practice Complete. <br><br> Press "B" to review task instructions and begin the task.</p>','<p>Again, using your <span style="color:#B57EDC;"><b>right</b></span> hand,</p><ul style="list-style-type:none;"><li>If the word appears in <span style="color:red;">red</span>, with your <span style="color:#B57EDC;"><b>index</b></span> finger, press: <span style="color:red;"><b>J</b></span></li><li>If the word appears in <span style="color:yellow;">yellow</span>, with your <span style="color:#B57EDC;"><b>middle</b></span> finger, press: <span style="color:yellow;"><b>K</b></li><li>If the word appears in <span style="color:green;">green</span>, with your <span style="color:#B57EDC;"><b>ring</b></span> finger, press: <span style="color:green;"><b>L</b></li></ul><br><p><b>You will need to remember the colour-key assignments.</b></p><br><p>Please do your best to respond quickly and correctly to each item.</p><p>Press "B" when you are ready.</p>'],
+            show_clickable_nav: false,
+            allow_keys: true,
+            allow_backward: false,
+            key_forward: 'b'
+        }
+        function colourKeyPrompt(){
+                if (prac == false){
+                    return '';
+                }
+                else{
+                    return '<span style="color:red;">J</span> &nbsp &nbsp &nbsp <span style="color:yellow;">K</span> &nbsp &nbsp &nbsp <span style="color:green;">L</span>'
+                }
+        };
+
+        //longer fixation cross intended to show only on the first trial in each block 
+        //to provide time for participant to orient to the words that are about to appear
+        var longerFixation = {
+            type: 'html-keyboard-response',
+            stimulus: '<p style="font-size:40px;"><b>+</b></p>',
+            choices: jsPsych.NO_KEYS,
+            trial_duration: 1000,
+            prompt: colourKeyPrompt
+        }
+
+        //fixation cross display including colour coded key prompt (maintain visual appeal of display)
+        var fixation = {
+            type: 'html-keyboard-response',
+            stimulus: '<p style="font-size:40px;"><b>+</b></p>',
+            choices: jsPsych.NO_KEYS,
+            trial_duration: function(){
+                if (i == 0){
+                    return 1000; // very first trial has longer pre-fixation cross
+                }
+                else {
+                    return 150; // all fixations other than the very first 
+                }
+            },
+            prompt: colourKeyPrompt
+        }
+
+        // blank display that follows the fixation cross
+        var blank_fixation = {
+            type: 'html-keyboard-response',
+            stimulus: '<p style="font-size:40px;"><b><span style="color:black;">+</span></b></p>',
+            choices: jsPsych.NO_KEYS,
+            trial_duration: 150,
+            prompt: colourKeyPrompt
+        }
+
+        var i = 0; //counter to keep track of the number of words in the learning trial
+        
+        //mapping of the colour to key
+        var jkey = "red"; 
+        var kkey = "yellow";
+        var lkey = "green";
+
+        //trial that displays words and collects key-press responses
+        var learning_trial = {
+             type: 'html-keyboard-response',
+             stimulus: function () {
+                return ('<p style="font-size:40px; color: '+ jsPsych.timelineVariable('colour', true)+'">' + jsPsych.timelineVariable('word',true) +'</p>');
+            },
+             choices: ['j', 'k', 'l'],
+             prompt: colourKeyPrompt,
+             trial_duration: 2000,
+
+             // store the word, condition, the correct response, the accuracy of participant, the colour of the word and the block
+             data: {trial_kind: "learn", word: jsPsych.timelineVariable('word'), condition: jsPsych.timelineVariable('cont_condition'), correct_response: jsPsych.timelineVariable('correct_response'), colour: jsPsych.timelineVariable('colour'), block: jsPsych.timelineVariable('block'), cont_condition: jsPsych.timelineVariable('cont_condition') },
+             
+             on_finish: function(data) {
+                
+                i++;  //the count at the end of the trial will always be equal to the "word number", but will be "word number + 1" in terms of the array it references.
+    
+                var correct_colour = false;
+                
+                if (data.response == 'j'){
+                    if (data.colour == jkey){correct_colour = true;}
+                }
+                else if (data.response == 'k'){
+                    if (data.colour == kkey){correct_colour = true;}
+                }
+                else if (data.response == 'l'){
+                    if (data.colour == lkey){correct_colour = true;}
+                }
+
+                //set the correct_colour data property based on the selection of participant
+                data.accuracy = correct_colour;
+
+                if (data.rt == null) {console.log("you timed out"); data.flag = 'timed_out'}   //first determine if time-out
+                else if (data.rt < 200) {console.log("anticipation");data.flag = 'anticipation'}  // next determine if anticipation
+                else if (data.accuracy == false) {console.log("you made an error");data.flag = 'error'} // if not either of these, flag the FALSE accuracy as an error
+                
+            }
+                
+        };  
+
+        //the conditional stimulus to display after incorrect button presses
+        var incorrect_display_message = {
+            type: 'html-keyboard-response',
+            stimulus: '<p style="font-size:40px;">XXX</p>',
+            choices: jsPsych.NO_KEYS,
+            trial_duration: 500,
+            prompt: colourKeyPrompt,
+            data:{trial_kind: "err_disp",}
+        };
+
+        // the conditional function with the logic that decides when to display the "XXX" feedback
+        var incorrect_display_conditional = {
+            timeline: [incorrect_display_message],
+
+            conditional_function(){
+                var was_colour_correct = jsPsych.data.getLastTrialData().values()[0].accuracy;
+                if (was_colour_correct === true){return false;} //don't show XXX feedback on this trial
+                else{return true;} // execute and show XXX for a duration of 500 ms
+            }
+        };
+
+        var evenoroddness = null; //sets up the variable to hold the ever changing even/oddness
+        var express_nf = null;  //stores the expression generated
+
+        //is called each time the correct_response property is updated, to get the latest value
+        function getEvenoroddness() {
+            return evenoroddness;
+        };
+        //called to store the stimulus as a data item of the trial
+        function getExpression() {
+            return express_nf;
+        }
+
+        //returns a simple expression (randomly) and using the result, updates the evenoroddness variable
+        function expressionGenerator(){
+            var num = [1,2,3,4]; // make array of possible integers to use in the expression
+            var numloc1 = Math.floor(Math.random()*num.length); //randomly select a location in the array
+            var numloc2 = Math.floor(Math.random()*num.length); //randomly select a location in the array
+            var result = num[numloc1] + num[numloc2]; //determine the result from adding the two integers
+            var expression = num[numloc1].toString() + ' + ' + num[numloc2].toString() + ' ='; //generate an expression to be displayed to the participant.
+           
+            express_nf = expression;  //store the current expression
+
+            if (isEven(result) === true){evenoroddness = 'e';} //check if the generated result is even or odd
+            else{evenoroddness = 'o';} //set the status of the evenoroddness variable
+                
+            return '<p style="font-size:40px;">' + expression + '</p>'; //show participant the generated expression
+        };
+
+        //message to display at end of each learn block, participant indicates if result of single digit addition is even or odd.
+        var attention_check_message = {
+            type: 'html-keyboard-response',
+            stimulus: expressionGenerator, //call the function that constructs a random expression
+            choices: ['e', 'o'],
+            prompt: '<p>Is the result even or odd? <br>(not timed)</p><p style="color:white;">"e" for even</span> &nbsp &nbsp &nbsp <span style="color:white;">"o" for odd</p>',
+            data: {trial_kind: "attn", expression: getExpression, correct_response: getEvenoroddness}, //adds the status (even or odd) of the expression to the trial
+          
+            on_finish: function(data){
+            //store participant accuracy on attention check 
+               var acc = false;
+               if (data.correct_response === data.response){  //compares the response to the status
+                   acc = true; //if participant has answered correctly, acc is true
+               }
+               data.accuracy = acc; //if participant has not answered correctly, acc is false
+            }       
+        };
+    
+        // this conditional timeline will run on the 30th, 60th, 90th, ... trial, i.e. after each learning block
+        var attention_check_conditional = {
+            timeline: [attention_check_message, counting_down_until_trials, longerFixation],
+            
+            conditional_function: function(){ 
+                //for multiples of 30, show the attention check (between blocks)
+                if (i%3 === 0 && i%10 === 0 && i!=240){
+                    return true;
+                }
+                else {
+                    return false;
+                }
+            }
+        };
+    
+        var prac = true;  // variable that determines if the procedure is practice or not - for key-colour legend display.
+        var practice_procedure ={
+            timeline:[fixation, blank_fixation, learning_trial, incorrect_display_conditional],
+               
+            timeline_variables: [
+                {word: 'shirt', colour: "green", cont_condition: 'prac', correct_response: 'l'},
+                {word: 'fruit', colour: "red", cont_condition: 'prac', correct_response: 'j'},
+                {word: 'mouse', colour: "yellow", cont_condition: 'prac', correct_response: 'k'},
+                {word: 'grape', colour: "red", cont_condition: 'prac', correct_response: 'j'},
+                {word: 'puppy', colour: "yellow", cont_condition: 'prac', correct_response: 'k'},
+                {word: 'shark', colour: "green", cont_condition: 'prac', correct_response: 'l'},
+                {word: 'plant', colour: "yellow", cont_condition: 'prac', correct_response: 'k'},
+                {word: 'skunk', colour: "green", cont_condition: 'prac', correct_response: 'l'},
+                {word: 'pills', colour: "yellow", cont_condition: 'prac', correct_response: 'k'},
+                {word: 'towel', colour: "red", cont_condition: 'prac', correct_response: 'j'}
+            ],
+
+            on_timeline_finish: function(){
+                //reset word count for main_learn_procedure
+                i = 0;
+                prac = false;
+            }
+        };
+        
+        //main_learn_procedure - a loop through the learn_word_trial for the length of the array containing the contingency learning objects
+        var main_learn_count = 0;   //keeps count of the current "learning block number - 1"
+        var learn_trials_block_stims = []
+
+        var main_learn_procedure = {
+            timeline: [fixation, blank_fixation, learning_trial, incorrect_display_conditional, attention_check_conditional],
+            timeline_variables: flat_learn_trials_all,
+            sample: {
+                type: 'custom',
+                fn: function(t){
+                        if (main_learn_count === 0){return t.slice(0,30);} // show the first 30 trials
+                        else if(main_learn_count === 1){return t.slice(30,60);}
+                        else if(main_learn_count === 2){return t.slice(60,90);}
+                        else if(main_learn_count === 3){return t.slice(90,120);}
+                        else if(main_learn_count === 4){return t.slice(120,150);}
+                        else if(main_learn_count === 5){return t.slice(150,180);}
+                        else if(main_learn_count === 6){return t.slice(180,210);}
+                        else if(main_learn_count === 7){return t.slice(210,240);}
+                    }
+            },
+         
+            loop_function: function() {
+                main_learn_count++;
+                if(main_learn_count < numBlocks){
+                    return true;
+                }
+                else{
+                    return false;
+                };
+            }
+        }
+        
+         //test_instructions
+         var test_instructions = {
+            type: 'instructions',
+            pages: ['<p>You are now ready to begin the second and final task. <br><br> This time you will be presented with letter strings in the center of the screen, one at a time.</p><p>You will be responding to whether each letter string is either a(n)</p><table class="center"><colgroup><col span="1" style="width: 100px;"><col span="1" style="width: 100px;"></colgroup><td><p><span style="color:orange;">non-word</span></td><td>or</td><td><p><span style="color:#87cefa;">English word</span></p></td></tr></table><br><p>Press the SPACE bar for instructions.</p>','<table><colgroup><col span="1" style="width: 300px;"><col span="1" style="width: 300px;"></colgroup><td><p>Use your <span style="color:orange;">LEFT</span> index finger</p><p>to press <span style="color:orange;">F</span></td><td><p>Use your <span style="color:#87cefa;">RIGHT</span> index finger</p><p>to press <span style="color:#87cefa;">H</span></p></td></tr><tr><td>for non-words</td><td>for English words</td></tr></table><br><p>Press the SPACE bar for an example.</p>','<table> <colgroup><col span="1" style="width: 300px;"><col span="1" style="width: 300px;"></colgroup><td><p><span style="color:green;font-size:30px">blunk</span></p>is a non-word<br>and you should</td><td><p><span style="color:green;font-size:30px;">blank</span></p>is an English word<br>and you should</td></tr><tr><td>press <span style="color:orange;">F</span></td><td>press <span style="color:#87cefa;">H</span></td></tr></table><br><p>Place your fingers now.</p><p>When you are ready to begin the final task, press the SPACE bar.</p>'],
+            show_clickable_nav: false,
+            allow_keys: true,
+            allow_backward: false,
+            key_forward: ' '
+         };
+             
+        
+
+        // variable for Trial behaviour of Lexical Decision Task
+        // uses the array containing LDT objects (stimulus, condition, correct_response, etc.)
+         var lexical_decision_trial = {
+            type: 'html-keyboard-response',
+            stimulus: function () {
+                return ('<p style="font-size:40px; color: '+ jsPsych.timelineVariable('colourLDT', true)+'">' + jsPsych.timelineVariable('word',true) +'</p>');
+            },
+            choices: ['f', 'h'],
+    
+            data: { trial_kind: "test",
+                    word: jsPsych.timelineVariable('word'),
+                    colour: jsPsych.timelineVariable('colourLDT'),
+                    cont_condition: jsPsych.timelineVariable('cont_condition'), 
+                   condition: jsPsych.timelineVariable('condition'), 
+                   correct_response: jsPsych.timelineVariable('correct_response'), 
+                   stage: jsPsych.timelineVariable('stage'),
+                   block: jsPsych.timelineVariable('block')
+                },
+           
+           on_finish: function(data){
+               var acc = false;
+               if (data.correct_response == data.response){
+                   acc = true;
+               }
+               data.accuracy = acc;
+
+               if (data.rt < 200) {data.flag = 'anticipation'} // no matter what, if less than 200ms, it's anticipation
+               else if (acc == false) {data.flag = 'error'} // if it's not anticipation but still wrong, it's error
+            }
+        };
+
+        //main_test_procedure - a loop that performs LDT_word_trial for the length of the array containing LDT objects
+        var main_test_procedure = {
+            timeline: [fixation, blank_fixation, lexical_decision_trial],
+            timeline_variables: test_stim
+            //following is to shorten the test procedure for testing purposes .. sampling a few
+           /*,sample: {
+                type: 'custom',
+                fn: function(t){
+                    return t.slice(0,15);  //15 items are sampled
+                }
+            }  */
+        };
+
+        //screen to demarcate end of study and pre-empt data quality survey
+        var testing_concluded = {
+            type: 'html-keyboard-response',
+            stimulus: "<p><b>You have completed the second task.</b></p><p>Now, we would like you to answer some questions.<br>Your answers to the following questions will not impact your participation credit in any way.</p><p>Press the 'Enter' key to continue. </p>",
+            choices: ['enter']
+        }
+
+        var options_yesno = ["Yes", "No"];
+        var options_use_data = ["You may use my data.", "I wish to withdraw my consent."];
+    
+        //data quality and option to withdraw data 
+        var data_exclusion = {
+            type: 'survey-multi-choice', 
+            questions: [
+                {prompt: "Were you doing anything else while completing this task? (e.g. Netflix, music, other)", options: options_yesno, required: true},
+                {prompt: "Did you follow directions to the best of your ability?", options: options_yesno, required:true}, 
+                {prompt: "Do we still have your permission to use your data?", options: options_use_data, required:true}], 
+            button_label: 'Next',
+
+            on_finish: function(){
+
+                var dat = jsPsych.data.getLastTrialData().values()[0];
+            
+                dat.distracted = dat.response['Q0'];
+                dat.follow_dir = dat.response['Q1'];
+
+                var dataQUse = dat.response['Q2'];
+                //if participant did not say no to data usage, then continue to save data
+                if (dataQUse != "I wish to withdraw my consent."){
+                  saveData(subject_id+"_experiment_file", jsPsych.data.get().csv());
+                }
+                else { //otherwise do not save, continue to next item in timeline (feedback and granting credit)
+                }
+            } 
+        };
+
+            // Give time to save data
+            var second_to_last_trial = {
+	        type: 'html-keyboard-response',
+	        stimulus: "Please wait while relevant responses are transmitted to the server.",
+	        choices: jsPsych.NO_KEYS,
+	        trial_duration: 5000,
+        }
+
+            // The feedback_letter 
+             var feedback_letter = {
+            type: 'external-html',
+            url: "../ICOWAE_SONA/letters/FL_colours_and_words.html",
+            cont_btn: "end",
+            check_fn: function(){ return true; },
+
+            on_finish: function(){
+                //redirect to SONA auto credit granting on button click
+                window.location.replace(credit_url);
+            }
+        };
+
+       jsPsych.init({ 
+           timeline: [
+              welcome_screen,  
+              information_consent,
+              learn_instructions_prac,
+              learn_instructions_prac,
+              practice_procedure, 
+              learn_instructions, 
+              counting_down_until_learn_trials,
+              main_learn_procedure, 
+              test_instructions, 
+              counting_down_until_test_trials,
+              main_test_procedure,  
+              testing_concluded,
+              data_exclusion, 
+              second_to_last_trial, 
+              feedback_letter // Auto SONA credit granting
+            ],
+            
+            // call the saveData function after the experiment is over
+            on_finish: function(){
+               // jsPsych.data.displayData();  //for testing purposes, remove from final code
+            }
+        }); 
+    </script>
+</html>
